@@ -15,9 +15,12 @@ def generate_random_payload(kb: int) -> str:
     random_data = os.urandom(kb * 1024).hex()
     return json.dumps({'random_data': random_data})
 
-GLOBAL_PAYLOAD = generate_random_payload(kb=50)
+GLOBAL_PAYLOAD = generate_random_payload(kb=1)
 
 logging.basicConfig(level=logging.INFO)
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 BUCKET_NAME = os.environ['BUCKET_NAME']
 HELLO_WORLD_LAMBDA_ARN = os.environ['HELLO_WORLD_LAMBDA_ARN']
@@ -128,7 +131,7 @@ def lambda_invoke_timer(func):
         start_time = time.time()
         result = func()
         end_time = time.time()
-        logging.info(f"Function '{func.__name__}' executed in {end_time - start_time:.4f} seconds")
+        logger.info(f"Function '{func.__name__}' executed in {end_time - start_time:.4f} seconds")
         total_time += end_time - start_time
     return total_time / reruns
 
