@@ -12,10 +12,10 @@ import logging
 from botocore.config import Config
 
 def generate_random_payload(kb: int) -> str:
-    random_data = os.urandom(kb * 1024).hex()
+    random_data = os.urandom(math.floor(kb * 1024)).hex()
     return json.dumps({'random_data': random_data})
 
-GLOBAL_PAYLOAD = generate_random_payload(kb=1)
+GLOBAL_PAYLOAD = generate_random_payload(kb=0.5)
 
 logging.basicConfig(level=logging.INFO)
 
@@ -24,7 +24,7 @@ logger.setLevel(logging.INFO)
 
 BUCKET_NAME = os.environ['BUCKET_NAME']
 HELLO_WORLD_LAMBDA_ARN = os.environ['HELLO_WORLD_LAMBDA_ARN']
-INVOCATION_COUNT = 390
+INVOCATION_COUNT = 800
 
 # Configure boto3 client with increased max connections
 boto3_config = Config(
@@ -87,7 +87,7 @@ def invoke_single_lambda(lambda_arn: str) -> Dict:
     )
 
 def parallel_invoke_threadpool() -> float:
-    with ThreadPoolExecutor(max_workers=800) as executor:
+    with ThreadPoolExecutor(max_workers=INVOCATION_COUNT) as executor:
         futures = [
             executor.submit(invoke_single_lambda, HELLO_WORLD_LAMBDA_ARN)
             for _ in range(INVOCATION_COUNT)
