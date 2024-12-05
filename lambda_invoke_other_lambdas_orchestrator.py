@@ -13,9 +13,11 @@ from botocore.config import Config
 
 def generate_random_payload(kb: int) -> str:
     random_data = os.urandom(math.floor(kb * 1024)).hex()
-    return json.dumps({'random_data': random_data})
+    return {'random_data': random_data}
 
 GLOBAL_PAYLOAD = generate_random_payload(kb=0.5)
+
+
 
 logging.basicConfig(level=logging.INFO)
 
@@ -48,21 +50,40 @@ async def invoke_lambdas_async(session, lambda_arn: str, count: int) -> List[Dic
                 lambda_client.invoke(
                     FunctionName=lambda_arn,
                     InvocationType='RequestResponse',
-                    Payload=GLOBAL_PAYLOAD
+                    Payload=json.dumps({
+                        "random_data": GLOBAL_PAYLOAD['random_data'],
+                        "echo": i
+                    })
                 )
             )
-            for _ in range(count)
+            for i in range(count)
         ]
+
+        echos = []
         
         results = []
         for completed_task in asyncio.as_completed(tasks):
             try:
                 result = await completed_task
-                results.append(result)
+
+                payload = await result['Payload'].read()
+                payload_dict = json.loads(payload)
+                
+                results.append({
+                    'Payload': payload_dict
+                })
+                
+                if 'errorMessage' in payload_dict:
+                    logger.error(f"Lambda Error: {payload_dict}")
+                else:
+                    echos.append(payload_dict.get('echo'))
+                
             except Exception as e:
                 logging.error(f"Task failed with error: {str(e)}")
                 results.append({"error": str(e)})
         
+        logger.info(f"Echos: {sorted(echos)}, Count: {len(echos)}")
+
         return results
 
 async def parallel_invoke_asyncio() -> float:
@@ -83,7 +104,9 @@ def invoke_single_lambda(lambda_arn: str) -> Dict:
     return lambda_client.invoke(
         FunctionName=lambda_arn,
         InvocationType='RequestResponse',
-        Payload=GLOBAL_PAYLOAD
+        Payload=json.dumps({
+            "random_data": GLOBAL_PAYLOAD['random_data'],
+        })
     )
 
 def parallel_invoke_threadpool() -> float:
@@ -125,7 +148,7 @@ def parallel_invoke_hybrid(num_threads: int = 2) -> float:
 
 def lambda_invoke_timer(func):
     total_time = 0
-    reruns = 10
+    reruns = 1
 
     for _ in range(reruns):
         start_time = time.time()
